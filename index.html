@@ -270,6 +270,9 @@
                 // Make API call
                 const response = await fetch('https://onboarding-api-1-cd19b4a6823b.herokuapp.com', {
                     method: 'POST',
+                    headers: {
+                        'Host': 'onboarding-api-1-cd19b4a6823b.herokuapp.com'
+                    },
                     body: formData
                 });
                 
