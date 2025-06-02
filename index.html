@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onboarding API Form</title>
+    <link rel="icon" href="data:,">
     <style>
         * {
             margin: 0;
@@ -432,31 +433,31 @@
                 formData.append('id', document.getElementById('id').files[0]);
                 formData.append('selfie', document.getElementById('selfie').files[0]);
                 
-                // Make API call
-                const response = await fetch('https://onboarding-api-1-cd19b4a6823b.herokuapp.com', {
+                // Make API call through CORS proxy
+                const response = await fetch('https://cors-anywhere.herokuapp.com/https://onboarding-api-1-cd19b4a6823b.herokuapp.com', {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: {
-                        'Host': 'onboarding-api-1-cd19b4a6823b.herokuapp.com'
+                        'Host': 'onboarding-api-1-cd19b4a6823b.herokuapp.com',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: formData
                 });
                 
                 const responseText = await response.text();
-
-                console.log(response);
                 
                 // Show result
                 loading.style.display = 'none';
                 result.style.display = 'block';
                 
-                if (response.ok) {
-                    result.className = 'result success';
-                    document.getElementById('resultTitle').textContent = '✅ Success!';
+                // Always try to parse and show the specific fields if possible
+                try {
+                    const jsonResponse = JSON.parse(responseText);
                     
-                    // Try to parse as JSON and show only specific fields
-                    try {
-                        const jsonResponse = JSON.parse(responseText);
+                    // Check if we have the expected response structure
+                    if (jsonResponse.status === 'success' || jsonResponse.comparison !== undefined) {
+                        result.className = 'result success';
+                        document.getElementById('resultTitle').textContent = '✅ Success!';
+                        
                         const displayData = {
                             'Comparison Score': jsonResponse.comparison || 'N/A',
                             'Selfie Score': jsonResponse.selfie?.score || 'N/A',
@@ -469,13 +470,23 @@
                         }
                         
                         document.getElementById('resultContent').textContent = displayText;
-                    } catch {
-                        document.getElementById('resultContent').textContent = responseText;
+                    } else {
+                        // Show error response
+                        result.className = 'result error';
+                        document.getElementById('resultTitle').textContent = '❌ Error Response';
+                        document.getElementById('resultContent').textContent = JSON.stringify(jsonResponse, null, 2);
                     }
-                } else {
-                    result.className = 'result error';
-                    document.getElementById('resultTitle').textContent = '❌ Error';
-                    document.getElementById('resultContent').textContent = `Status: ${response.status}\n\n${responseText}`;
+                } catch {
+                    // If not JSON or parsing fails, check response status
+                    if (response.ok) {
+                        result.className = 'result success';
+                        document.getElementById('resultTitle').textContent = '✅ Response Received';
+                        document.getElementById('resultContent').textContent = responseText;
+                    } else {
+                        result.className = 'result error';
+                        document.getElementById('resultTitle').textContent = '❌ Error';
+                        document.getElementById('resultContent').textContent = `Status: ${response.status}\n\n${responseText}`;
+                    }
                 }
                 
             } catch (error) {
