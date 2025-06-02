@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Generator - PDF, PNG, JPEG Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .format-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        
+        .format-section h2 {
+            color: #007cba;
+            margin-top: 0;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            border-color: #007cba;
+            outline: none;
+        }
+        
+        .button {
+            background: #007cba;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background: #005a8b;
+        }
+        
+        .copy-btn {
+            background: #28a745;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+        }
+        
+        .instructions {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007cba;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Base64 Generator</h1>
+        <p>Generate base64 encoded strings for PDF documents and images (PNG, JPEG) containing "Hello World".</p>
+        
+        <!-- PDF Section -->
+        <div class="format-section">
+            <h2>📄 PDF Document</h2>
+            <div class="output-section">
+                <h3>Base64 Encoded PDF String:</h3>
+                <textarea 
+                    id="pdfBase64Output" 
+                    readonly 
+                    onclick="this.select()"
+                    placeholder="PDF base64 string will appear here..."
+                ></textarea>
+                
+                <div>
+                    <button class="button copy-btn" onclick="copyToClipboard('pdfBase64Output')">Copy PDF Base64</button>
+                    <a id="pdfDownloadLink" class="button" download="hello-world.pdf" style="display: none;">Download PDF</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- PNG Section -->
+        <div class="format-section">
+            <h2>🖼️ PNG Image</h2>
+            <div class="output-section">
+                <canvas id="pngCanvas" width="400" height="200" style="border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;"></canvas>
+                <h3>Base64 Encoded PNG String:</h3>
+                <textarea 
+                    id="pngBase64Output" 
+                    readonly 
+                    onclick="this.select()"
+                    placeholder="PNG base64 string will appear here..."
+                ></textarea>
+                
+                <div>
+                    <button class="button copy-btn" onclick="copyToClipboard('pngBase64Output')">Copy PNG Base64</button>
+                    <a id="pngDownloadLink" class="button" download="hello-world.png" style="display: none;">Download PNG</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- JPEG Section -->
+        <div class="format-section">
+            <h2>📷 JPEG Image</h2>
+            <div class="output-section">
+                <canvas id="jpegCanvas" width="400" height="200" style="border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;"></canvas>
+                <h3>Base64 Encoded JPEG String:</h3>
+                <textarea 
+                    id="jpegBase64Output" 
+                    readonly 
+                    onclick="this.select()"
+                    placeholder="JPEG base64 string will appear here..."
+                ></textarea>
+                
+                <div>
+                    <button class="button copy-btn" onclick="copyToClipboard('jpegBase64Output')">Copy JPEG Base64</button>
+                    <a id="jpegDownloadLink" class="button" download="hello-world.jpg" style="display: none;">Download JPEG</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div id="successMessage" class="success-message">
+            Base64 string copied to clipboard!
+        </div>
+
+        <div class="instructions">
+            <h3>How to use the base64 strings:</h3>
+            <ol>
+                <li><strong>PDF:</strong> Copy the PDF base64 string and use it in applications or convert back to PDF using online tools</li>
+                <li><strong>PNG:</strong> Copy the PNG base64 string and use it directly in HTML img tags or CSS backgrounds</li>
+                <li><strong>JPEG:</strong> Copy the JPEG base64 string for web applications or image processing</li>
+                <li>All formats can be downloaded directly using the download buttons</li>
+            </ol>
+        </div>
+        
+        <div class="instructions">
+            <h3>About the generated files:</h3>
+            <p><strong>PDF:</strong> Minimal valid PDF document with "Hello World" in Helvetica 24pt</p>
+            <p><strong>PNG:</strong> 400x200px image with transparent background and "Hello World" text</p>
+            <p><strong>JPEG:</strong> 400x200px image with white background and "Hello World" text</p>
+        </div>
+    </div>
+
+    <script>
+        // Function to create a simple PDF with "Hello World" and return base64 string
+        function createHelloWorldPDF() {
+            // Basic PDF structure with "Hello World" text
+            const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 24 Tf
+100 700 Td
+(Hello World) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000053 00000 n 
+0000000100 00000 n 
+0000000249 00000 n 
+0000000343 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+410
+%%EOF`;
+
+            // Convert to base64
+            const base64String = btoa(pdfContent);
+            return base64String;
+        }
+
+        // Function to copy text to clipboard
+        function copyToClipboard(elementId) {
+            const textarea = document.getElementById(elementId);
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile devices
+            
+            try {
+                document.execCommand('copy');
+                showSuccessMessage();
+            } catch (err) {
+                // Fallback for modern browsers
+                navigator.clipboard.writeText(textarea.value).then(function() {
+                    showSuccessMessage();
+                }).catch(function(err) {
+                    alert('Failed to copy to clipboard. Please select the text and copy manually.');
+                });
+            }
+        }
+
+        // Function to create PNG image with "Hello World"
+        function createHelloWorldPNG() {
+            const canvas = document.getElementById('pngCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas with transparent background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set text properties
+            ctx.font = '32px Arial, sans-serif';
+            ctx.fillStyle = '#333333';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw text
+            ctx.fillText('Hello World', canvas.width / 2, canvas.height / 2);
+            
+            // Get base64 string
+            return canvas.toDataURL('image/png').split(',')[1];
+        }
+
+        // Function to create JPEG image with "Hello World"
+        function createHelloWorldJPEG() {
+            const canvas = document.getElementById('jpegCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Fill with white background (JPEG doesn't support transparency)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Set text properties
+            ctx.font = '32px Arial, sans-serif';
+            ctx.fillStyle = '#333333';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw text
+            ctx.fillText('Hello World', canvas.width / 2, canvas.height / 2);
+            
+            // Get base64 string
+            return canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+        }
+
+        // Function to show success message
+        function showSuccessMessage() {
+            const message = document.getElementById('successMessage');
+            message.style.display = 'block';
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+
+        // Generate all formats and populate the page when loaded
+        window.onload = function() {
+            // Generate PDF
+            const base64PDF = createHelloWorldPDF();
+            document.getElementById('pdfBase64Output').value = base64PDF;
+            const pdfDownloadLink = document.getElementById('pdfDownloadLink');
+            pdfDownloadLink.href = `data:application/pdf;base64,${base64PDF}`;
+            pdfDownloadLink.style.display = 'inline-block';
+            
+            // Generate PNG
+            const base64PNG = createHelloWorldPNG();
+            document.getElementById('pngBase64Output').value = base64PNG;
+            const pngDownloadLink = document.getElementById('pngDownloadLink');
+            pngDownloadLink.href = `data:image/png;base64,${base64PNG}`;
+            pngDownloadLink.style.display = 'inline-block';
+            
+            // Generate JPEG
+            const base64JPEG = createHelloWorldJPEG();
+            document.getElementById('jpegBase64Output').value = base64JPEG;
+            const jpegDownloadLink = document.getElementById('jpegDownloadLink');
+            jpegDownloadLink.href = `data:image/jpeg;base64,${base64JPEG}`;
+            jpegDownloadLink.style.display = 'inline-block';
+            
+            console.log('Base64 Generator loaded successfully');
+            console.log('PDF Base64 length:', base64PDF.length);
+            console.log('PNG Base64 length:', base64PNG.length);
+            console.log('JPEG Base64 length:', base64JPEG.length);
+        };
+    </script>
+</body>
+</html>
