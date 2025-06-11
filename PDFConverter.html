@@ -128,16 +128,125 @@
             border-radius: 4px;
         }
         
-        .preview-container {
+        .file-list {
+            text-align: left;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-name {
+            color: #333;
+            font-weight: 500;
+            flex: 1;
+            margin-right: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .file-status {
+            font-size: 0.9em;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .file-status.pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ff9800;
+        }
+        
+        .file-status.processing {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+        }
+        
+        .file-status.completed {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .file-status.error {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .results-container {
             margin-top: 30px;
             display: none;
         }
         
-        .preview-image {
-            max-width: 100%;
+        .result-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 15px;
+        }
+        
+        .result-info {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .result-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .result-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .download-individual {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .download-individual:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .bulk-actions {
+            margin: 20px 0;
+            display: none;
         }
         
         .status {
@@ -202,11 +311,11 @@
         
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📄</div>
-            <div class="upload-text">Drop your PDF here or click to browse</div>
-            <div class="upload-subtext">Supports single page PDF files</div>
+            <div class="upload-text">Drop your PDF files here or click to browse</div>
+            <div class="upload-subtext">Supports multiple PDF files - converts first page of each</div>
         </div>
         
-        <input type="file" id="fileInput" accept=".pdf">
+        <input type="file" id="fileInput" accept=".pdf" multiple>
         
         <div class="quality-control">
             <label for="qualitySlider">
@@ -215,7 +324,10 @@
             <input type="range" id="qualitySlider" class="quality-slider" min="10" max="100" value="90">
         </div>
         
-        <button class="btn" id="convertBtn" disabled>Convert to JPG</button>
+        <div class="file-list" id="fileList"></div>
+        
+        <button class="btn" id="convertBtn" disabled>Convert All to JPG</button>
+        <button class="btn" id="clearBtn" style="display: none;">Clear Files</button>
         
         <div class="progress-bar" id="progressBar">
             <div class="progress-fill" id="progressFill"></div>
@@ -223,13 +335,14 @@
         
         <div id="status"></div>
         
-        <div class="preview-container" id="previewContainer">
-            <img id="previewImage" class="preview-image" alt="Converted JPG">
-            <br>
-            <button class="btn" id="downloadBtn">Download JPG</button>
+        <div class="bulk-actions" id="bulkActions">
+            <button class="btn" id="downloadAllBtn">Download All as ZIP</button>
         </div>
+        
+        <div class="results-container" id="resultsContainer"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // Set PDF.js worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -237,17 +350,19 @@
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const convertBtn = document.getElementById('convertBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
         const status = document.getElementById('status');
-        const previewContainer = document.getElementById('previewContainer');
-        const previewImage = document.getElementById('previewImage');
+        const fileList = document.getElementById('fileList');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const bulkActions = document.getElementById('bulkActions');
         const qualitySlider = document.getElementById('qualitySlider');
         const qualityValue = document.getElementById('qualityValue');
 
-        let currentFile = null;
-        let convertedDataUrl = null;
+        let selectedFiles = [];
+        let convertedResults = [];
 
         // Quality slider update
         qualitySlider.addEventListener('input', function() {
@@ -269,96 +384,224 @@
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
         });
         
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
+            const files = Array.from(e.target.files);
+            handleFiles(files);
         });
 
-        function handleFile(file) {
-            if (file.type !== 'application/pdf') {
-                showStatus('Please select a PDF file.', 'error');
+        function handleFiles(files) {
+            const pdfFiles = files.filter(file => file.type === 'application/pdf');
+            
+            if (pdfFiles.length === 0) {
+                showStatus('Please select PDF files only.', 'error');
                 return;
             }
             
-            currentFile = file;
+            if (pdfFiles.length !== files.length) {
+                showStatus(`${pdfFiles.length} PDF files selected (${files.length - pdfFiles.length} non-PDF files ignored).`, 'success');
+            } else {
+                showStatus(`${pdfFiles.length} PDF files selected.`, 'success');
+            }
+            
+            selectedFiles = pdfFiles;
+            updateFileList();
             convertBtn.disabled = false;
-            showStatus(`Selected: ${file.name}`, 'success');
-            previewContainer.style.display = 'none';
+            clearBtn.style.display = 'inline-block';
+            resultsContainer.style.display = 'none';
+            bulkActions.style.display = 'none';
+            convertedResults = [];
         }
 
-        convertBtn.addEventListener('click', convertPdfToJpg);
+        function updateFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+            
+            fileList.style.display = 'block';
+            fileList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-item" data-index="${index}">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-status pending">Pending</div>
+                </div>
+            `).join('');
+        }
 
-        async function convertPdfToJpg() {
-            if (!currentFile) return;
-            
-            convertBtn.disabled = true;
-            progressBar.style.display = 'block';
-            showStatus('Converting PDF to JPG...', '');
-            
-            try {
-                const arrayBuffer = await currentFile.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-                
-                if (pdf.numPages === 0) {
-                    throw new Error('PDF has no pages');
-                }
-                
-                // Get first page
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({scale: 2}); // Higher scale for better quality
-                
-                // Create canvas
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                // Render PDF page to canvas
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                
-                await page.render(renderContext).promise;
-                
-                // Convert to JPG
-                const quality = qualitySlider.value / 100;
-                convertedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                
-                // Show preview
-                previewImage.src = convertedDataUrl;
-                previewContainer.style.display = 'block';
-                
-                progressFill.style.width = '100%';
-                showStatus('Conversion completed successfully!', 'success');
-                
-            } catch (error) {
-                console.error('Conversion error:', error);
-                showStatus('Error converting PDF: ' + error.message, 'error');
-            } finally {
-                convertBtn.disabled = false;
-                setTimeout(() => {
-                    progressBar.style.display = 'none';
-                    progressFill.style.width = '0%';
-                }, 1000);
+        function updateFileStatus(index, status, statusClass) {
+            const fileItem = fileList.querySelector(`[data-index="${index}"] .file-status`);
+            if (fileItem) {
+                fileItem.textContent = status;
+                fileItem.className = `file-status ${statusClass}`;
             }
         }
 
-        downloadBtn.addEventListener('click', () => {
-            if (!convertedDataUrl) return;
-            
-            const link = document.createElement('a');
-            link.download = (currentFile.name.replace('.pdf', '') || 'converted') + '.jpg';
-            link.href = convertedDataUrl;
-            link.click();
+        clearBtn.addEventListener('click', () => {
+            selectedFiles = [];
+            convertedResults = [];
+            fileInput.value = '';
+            updateFileList();
+            convertBtn.disabled = true;
+            clearBtn.style.display = 'none';
+            resultsContainer.style.display = 'none';
+            bulkActions.style.display = 'none';
+            showStatus('', '');
         });
+
+        convertBtn.addEventListener('click', convertAllPdfs);
+
+        async function convertAllPdfs() {
+            if (selectedFiles.length === 0) return;
+            
+            convertBtn.disabled = true;
+            clearBtn.disabled = true;
+            progressBar.style.display = 'block';
+            convertedResults = [];
+            
+            showStatus(`Converting ${selectedFiles.length} PDF files...`, '');
+            
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                updateFileStatus(i, 'Processing...', 'processing');
+                
+                try {
+                    const result = await convertSinglePdf(file, i);
+                    convertedResults.push(result);
+                    updateFileStatus(i, 'Completed', 'completed');
+                } catch (error) {
+                    console.error(`Error converting ${file.name}:`, error);
+                    updateFileStatus(i, 'Error', 'error');
+                }
+                
+                // Update progress
+                const progress = ((i + 1) / selectedFiles.length) * 100;
+                progressFill.style.width = progress + '%';
+            }
+            
+            const successCount = convertedResults.length;
+            const failCount = selectedFiles.length - successCount;
+            
+            if (successCount > 0) {
+                showStatus(`Conversion completed! ${successCount} files converted successfully${failCount > 0 ? `, ${failCount} failed` : ''}.`, 'success');
+                displayResults();
+                bulkActions.style.display = 'block';
+            } else {
+                showStatus('All conversions failed. Please check your PDF files.', 'error');
+            }
+            
+            convertBtn.disabled = false;
+            clearBtn.disabled = false;
+            
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 1000);
+        }
+
+        async function convertSinglePdf(file, index) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            
+            if (pdf.numPages === 0) {
+                throw new Error('PDF has no pages');
+            }
+            
+            // Get first page
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({scale: 2});
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            // Render PDF page to canvas
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            await page.render(renderContext).promise;
+            
+            // Convert to JPG
+            const quality = qualitySlider.value / 100;
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            
+            return {
+                fileName: file.name.replace('.pdf', '.jpg'),
+                originalName: file.name,
+                dataUrl: dataUrl,
+                size: Math.round(dataUrl.length * 0.75) // Approximate size
+            };
+        }
+
+        function displayResults() {
+            resultsContainer.style.display = 'block';
+            resultsContainer.innerHTML = convertedResults.map((result, index) => `
+                <div class="result-item">
+                    <img src="${result.dataUrl}" alt="${result.fileName}" class="result-preview">
+                    <div class="result-info">
+                        <div class="result-name">${result.fileName}</div>
+                        <div class="result-size">${formatBytes(result.size)}</div>
+                    </div>
+                    <button class="download-individual" onclick="downloadSingle(${index})">Download</button>
+                </div>
+            `).join('');
+        }
+
+        function downloadSingle(index) {
+            const result = convertedResults[index];
+            const link = document.createElement('a');
+            link.download = result.fileName;
+            link.href = result.dataUrl;
+            link.click();
+        }
+
+        downloadAllBtn.addEventListener('click', async () => {
+            if (convertedResults.length === 0) return;
+            
+            downloadAllBtn.disabled = true;
+            showStatus('Creating ZIP file...', '');
+            
+            try {
+                const zip = new JSZip();
+                
+                convertedResults.forEach(result => {
+                    // Convert data URL to blob
+                    const base64Data = result.dataUrl.split(',')[1];
+                    zip.file(result.fileName, base64Data, {base64: true});
+                });
+                
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                
+                // Download ZIP
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = 'converted-pdfs.zip';
+                link.click();
+                
+                URL.revokeObjectURL(link.href);
+                showStatus('ZIP file downloaded successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error creating ZIP:', error);
+                showStatus('Error creating ZIP file.', 'error');
+            } finally {
+                downloadAllBtn.disabled = false;
+            }
+        });
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
 
         function showStatus(message, type) {
             status.innerHTML = message;
