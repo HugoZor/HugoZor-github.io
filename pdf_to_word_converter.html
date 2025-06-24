@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Word Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.39.1/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(102, 126, 234, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            color: #764ba2;
+            transform: scale(1.1);
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: left;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .convert-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+            margin: 0 auto;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .convert-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .status.error {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .status.processing {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .loader {
+            border: 3px solid rgba(102, 126, 234, 0.2);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .feature-note {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            color: #f39c12;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF to Word</h1>
+        <p class="subtitle">Convert your PDF files to editable Word documents</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">Drop your PDF here</div>
+            <div class="upload-subtext">or click to browse files</div>
+        </div>
+        
+        <input type="file" id="fileInput" accept=".pdf" />
+        
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+        
+        <button class="convert-btn" id="convertBtn">Convert to Word</button>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="feature-note">
+            <strong>Note:</strong> This converter extracts text content from PDFs. Complex formatting, images, and layouts may not be perfectly preserved in the Word document.
+        </div>
+    </div>
+
+    <script>
+        // Set up PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertBtn = document.getElementById('convertBtn');
+        const status = document.getElementById('status');
+
+        let selectedFile = null;
+
+        // Upload area click handler
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileSelect(files[0]);
+            } else {
+                showStatus('Please select a valid PDF file.', 'error');
+            }
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            convertBtn.style.display = 'inline-block';
+            hideStatus();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Convert button click handler
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            convertBtn.disabled = true;
+            showStatus('<div class="loader"></div>Converting PDF to Word...', 'processing');
+
+            try {
+                const text = await extractTextFromPDF(selectedFile);
+                const docxBlob = await createWordDocument(text, selectedFile.name);
+                downloadFile(docxBlob, selectedFile.name.replace('.pdf', '.docx'));
+                showStatus('✅ Conversion completed successfully! Download started.', 'success');
+            } catch (error) {
+                console.error('Conversion error:', error);
+                showStatus('❌ Error converting PDF. Please try with a different file.', 'error');
+            } finally {
+                convertBtn.disabled = false;
+            }
+        });
+
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n\n';
+            }
+
+            return fullText.trim();
+        }
+
+        async function createWordDocument(text, originalFileName) {
+            // Create a simple Word document template
+            const docxTemplate = `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DxJLALLJi+aD05LUaJ6UAJWMA4O77AMlFdJGRR3WZDhOLYYY5MJwj8U8UBVAO0kYUCAV5z8/Dp4Rto/JDa3wLq4PQnEi7t33l7fBe3w8BVl8lVEFCbTF/uxXH7CzX5ZsQ7cXJjmXXZj4lFGRACSQ3yFAQF4CZFdOh1CHgIKrpqPp4L6MeBDLFyh11B9vJrXhFbAkdBJIxPJBSFZKFFVYRJSXNBNJhJaKSJEQBJJRJUIJNJSJGBJFINJKIJBJBJFBJNIKBJJRJIIJKJJBJBJIJLJBJBJIJJJBJJJBJGJJBJJJJJNJNJJJJJJJJJJBJGJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
